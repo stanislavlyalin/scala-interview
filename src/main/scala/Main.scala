@@ -1,13 +1,17 @@
-import scala.util.Try
-
 object Main {
   def main(args: Array[String]): Unit = {
 
-    // Напишите функцию, которая парсит строку в целое число, возвращая Option[Int]
+    // Используя монаду Option, напишите функцию, которая принимает два аргумента типа Option[Int]
+    // и возвращает их сумму, если оба аргумента определены
 
-    def toInt(s: String): Option[Int] = Try(s.toInt).toOption
+    def sumOption(a: Option[Int], b: Option[Int]): Option[Int] = for {
+      aVal <- a
+      bVal <- b
+    } yield aVal + bVal
 
-    println(toInt("555"))
-    println(toInt("test"))
+    println(sumOption(Some(1), Some(2)))
+    println(sumOption(Some(1), None))
+    println(sumOption(None, Some(2)))
+    println(sumOption(None, None))
   }
 }
