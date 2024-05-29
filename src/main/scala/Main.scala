@@ -1,17 +1,17 @@
 object Main {
   def main(args: Array[String]): Unit = {
 
-    // Напишите ленивую версию функции для вычисления n-го числа Фибоначчи
+    // Напишите функцию, которая принимает произвольный объект
+    // и возвращает его тип в виде строки (используя pattern matching)
 
-    lazy val fibs: LazyList[Int] = {
-      def fibHelper(a: Int, b: Int): LazyList[Int] = {
-        a #:: fibHelper(b, a + b)
-      }
-      fibHelper(0, 1)
+    def typeToString[A](a: A): String = a match {
+      case _: Int => "Int"
+      case _: Double => "Double"
+      case _ => "Unknown"
     }
 
-    def fibonacci(n: Int): Int = fibs(n)
-
-    println(fibonacci(6))
+    println(typeToString(1))
+    println(typeToString(2.0))
+    println(typeToString("test"))
   }
 }
