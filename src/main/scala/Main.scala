@@ -1,17 +1,11 @@
 object Main {
   def main(args: Array[String]): Unit = {
 
-    // Напишите функцию, которая принимает произвольный объект
-    // и возвращает его тип в виде строки (используя pattern matching)
+    // Напишите универсальную функцию для слияния двух списков произвольного типа
 
-    def typeToString[A](a: A): String = a match {
-      case _: Int => "Int"
-      case _: Double => "Double"
-      case _ => "Unknown"
-    }
+    def concatenateLists[A, B](a: List[A], b: List[B]): List[Any] = a ++ b
 
-    println(typeToString(1))
-    println(typeToString(2.0))
-    println(typeToString("test"))
+    println(concatenateLists(List(1, 2, 3), List(4.0, 5.0)))
+    println(concatenateLists(List("a", "b", "c"), List(true, false)))
   }
 }
