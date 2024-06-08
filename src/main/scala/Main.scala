@@ -1,19 +1,82 @@
 object Main {
   def main(args: Array[String]): Unit = {
 
-    // Отличия абстрактных классов и трейтов
+    // Наследование и композиция
 
-    // Абстрактный класс:
-    // - класс может наследовать только один абстрактный класс (одинарное наследование)
-    // - может иметь параметры конструктора
-    // - может содержать как абстрактные, так и конкретные методы и поля
-    // Назначение: вынести общую логику и инициализацию подклассов в базовый класс
+    // Наследование:
+    // * создаём новые классы путём наследования от существующих, расширяя их
+    // * переопределение методов - реализуем специфику в потомках
+    // * доступ к членам суперкласса - можем вызывать методы родителя
+    // * полиморфизм - можем подставлять потомков везде, где нужен суперкласс
 
-    // Трейт:
-    // - множественное наследование через примеси - миксины
-    // - не может иметь параметров конструктора
-    // - инициализация базовых классов в порядке указания после extends
-    // - тоже может содержать как абстрактные, так и конкретные методы и поля
-    // Назначение: для описания поведения, которое должно реализовываться в наследниках
+    // + можно строить логичные иерархии типов
+    // + легко специфицировать поведение потомков через переопределение методов
+
+    // - могут получаться жёсткие иерархии
+    // - код сложно использовать вне иерархии
+    // - изменения в суперклассах могут ломать поведение наследников
+
+    abstract class Animal(val name: String) {
+      def sound: String
+
+      def makeSound(): Unit = println(s"$name makes a sound: ${sound}")
+    }
+
+    class Dog(name: String) extends Animal(name) {
+      override def sound: String = "Woof"
+    }
+
+    class Cat(name: String) extends Animal(name) {
+      override def sound: String = "Meow"
+    }
+
+    val dog = new Dog("Buddy")
+    dog.makeSound() // Output: Buddy makes a sound: Woof
+
+    val cat = new Cat("Whiskers")
+    cat.makeSound() // Output: Whiskers makes a sound: Meow
+
+    // Композиция:
+    // * включаем одни классы в другие. Мы как из кирпичиков Lego строим новые объекты
+
+    // + простое повторное использование кода
+    // + меньше зависимостей от иерархий классов
+
+    // - много кода для связывания компонентов
+
+    trait SoundMaker {
+      def makeSound(): Unit
+    }
+
+    class DogComposition(val name: String) extends SoundMaker {
+      override def makeSound(): Unit = println(s"$name says: Woof")
+    }
+
+    class CatComposition(val name: String) extends SoundMaker {
+      override def makeSound(): Unit = println(s"$name says: Meow")
+    }
+
+    class Zoo {
+      private var animals: List[SoundMaker] = List()
+
+      def addAnimal(animal: SoundMaker): Unit = {
+        animals = animal :: animals
+      }
+
+      def makeAllSounds(): Unit = {
+        animals.foreach(_.makeSound())
+      }
+    }
+
+    val zoo = new Zoo
+    val dogComposition = new DogComposition("Buddy")
+    val catComposition = new CatComposition("Whiskers")
+
+    zoo.addAnimal(dogComposition)
+    zoo.addAnimal(catComposition)
+    zoo.makeAllSounds()
+    // Output:
+    // Buddy says: Woof
+    // Whiskers says: Meow
   }
 }
