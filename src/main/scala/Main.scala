@@ -1,23 +1,30 @@
 object Main {
-
-  // Реализуйте typeclass для сериализации объектов в строку и примеры его использования для различных типов данных
-
-  private trait Serializable {
-    def toStr: String
-  }
-
-  private class MySuperDuperType(val i: Int) extends Serializable {
-    override def toStr: String = i.toString
-  }
-
-  private class MyAwesomeType(val d: Double, val s: String) extends Serializable {
-    override def toStr: String = s"$d, $s"
-  }
-
-  private def printType[T <: Serializable](v: T): Unit = println(v.toStr)
-
   def main(args: Array[String]): Unit = {
-    printType(new MySuperDuperType(5))
-    printType(new MyAwesomeType(2.0, "test"))
+
+    // Как обрабатывать исключения в языке Scala?
+
+    // try-catch-finally
+    try {
+      val result = 10 / 0 // Это вызовет ArithmeticException
+      println(result)
+    } catch {
+      case e: ArithmeticException => println(s"Arithmetic exception caught: ${e.getMessage}")
+      case e: Exception => println(s"Exception caught: ${e.getMessage}")
+    } finally {
+      println("This will always be executed.")
+    }
+
+    // Try
+    import scala.util.{Try, Success, Failure}
+
+    Try(10 / 0) match {
+      case Success(result) => println(result)
+      case Failure(e: ArithmeticException) => println(s"Arithmetic exception caught: ${e.getMessage}")
+      case Failure(e: Exception) => println(s"Exception caught: ${e.getMessage}")
+    }
+    println("This will always be executed.")
+
+    Try(10 / 0).foreach(result => println(result))
+    Try(10 / 0).failed.foreach(e => println(s"Arithmetic exception caught: ${e.getMessage}"))
   }
 }
