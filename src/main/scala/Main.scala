@@ -1,60 +1,57 @@
-import scala.collection.mutable
+import scala.collection.immutable.{HashMap, HashSet}
 
 object Main {
   def main(args: Array[String]): Unit = {
 
-    // Иммутабельные и мутабельные типы
+    // HashSet и HashMap
 
-    // Иммутабельные: не изменяются. Безопасно в многопоточных приложениях, но больше памяти и хуже производительность)
+    // Это типы данных, которые позволяют эффективно вставлять и извлекать значения из Set / Map
+    // Для реализации используется структура Hash Array Mapped Trie (HAMT)
+    // Принцип действия:
+    // Вставляемое значение (например, 1), хешируется и разбивается на части, например, по 2 бита
+    // (на практике 5 бит - 32 ячейки на одном уровне дерева)
+    // Далее идём по частям хеша и вставляем в соответствующие узлы (ячейки). Если узла нет, он создаётся.
+    // Пример:
 
-    val list = List(1, 2, 3)
-    val newList = list :+ 4
+    // Изначально
+    // Empty HashSet:
+    // {}
 
-    println(list) // Output: List(1, 2, 3)
-    println(newList) // Output: List(1, 2, 3, 4)
+    // Нам нужно вставить значение `1`. Например, его хеш = 0001. Разбиваем на 2 части: 00 и 01
+    // Двумя битами можно закодировать 4 ячейки, поэтому на первом уровне дерева массив из 4 элементов
+    // По индексу 00 ничего нет, поэтому создаём новый узел также из 4 элементов
+    // Root:
+    // [ Node , _ , _ , _ ]
 
-    val map = Map("a" -> 1, "b" -> 2)
-    val newMap = map + ("c" -> 3)
+    // Затем в этот новый узел вставляем элемент по индексу 01. Получается:
+    // Root:
+    //[ Node , _ , _ , _ ]
+    //    |
+    //    v
+    // Node at Root[0]:
+    // [ _ , 1 , _ , _ ]
 
-    println(map) // Output: Map(a -> 1, b -> 2)
-    println(newMap) // Output: Map(a -> 1, b -> 2, c -> 3)
+    // При извлечении аналогичный процесс. Считаем хеш, разбиваем на части, спускаемся по дереву и смотрим, есть ли
+    // такой элемент
 
-    val set = Set(1, 2, 3)
-    val newSet = set + 4
+    // Это гораздо эффективнее. Сложность вместо O(N) будет O(1), т.к. взятие по индексу из массива - константно
 
-    println(set) // Output: Set(1, 2, 3)
-    println(newSet) // Output: Set(1, 2, 3, 4)
+    // Примеры использования HashSet и HashMap из стандартной библиотеки
 
-    case class Person(name: String, age: Int)
+    val set = HashSet(1, 2, 3, 4, 5)
+    val newSet = set + 6
+    val removedSet = set - 3
 
-    val person = Person("Alice", 30)
-    val olderPerson = person.copy(age = 31)
+    println(set) // Output: HashSet(5, 1, 2, 3, 4)
+    println(newSet) // Output: HashSet(5, 1, 6, 2, 3, 4)
+    println(removedSet) // Output: HashSet(5, 1, 2, 4)
 
-    println(person) // Output: Person(Alice,30)
-    println(olderPerson) // Output: Person(Alice,31)
+    val map = HashMap("a" -> 1, "b" -> 2, "c" -> 3)
+    val newMap = map + ("d" -> 4)
+    val removedMap = map - "b"
 
-    // Мутабельные: изменяются. Производительнее и меньше памяти, но нужно синхронизировать в многопоточных приложениях
-
-    val array = Array(1, 2, 3)
-    array(0) = 10
-
-    println(array.mkString(", ")) // Output: 10, 2, 3
-
-    val listBuffer = mutable.ListBuffer(1, 2, 3)
-    listBuffer += 4
-
-    println(listBuffer) // Output: ListBuffer(1, 2, 3, 4)
-
-    val mutableMap = mutable.Map("a" -> 1, "b" -> 2)
-    mutableMap += ("c" -> 3)
-
-    println(mutableMap) // Output: Map(a -> 1, b -> 2, c -> 3)
-
-    class MutablePerson(var name: String, var age: Int)
-
-    val mutablePerson = new MutablePerson("Bob", 25)
-    mutablePerson.age = 26
-
-    println(mutablePerson) // Output: MutablePerson@<hashcode>(Bob,26)
+    println(map)        // Output: HashMap(a -> 1, b -> 2, c -> 3)
+    println(newMap)     // Output: HashMap(a -> 1, b -> 2, c -> 3, d -> 4)
+    println(removedMap) // Output: HashMap(a -> 1, c -> 3)
   }
 }
