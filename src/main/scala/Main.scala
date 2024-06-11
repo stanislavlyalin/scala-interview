@@ -1,82 +1,29 @@
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+import scala.util.{Failure, Success}
+
 object Main {
   def main(args: Array[String]): Unit = {
 
-    // Наследование и композиция
+    // Promise и Future
 
-    // Наследование:
-    // * создаём новые классы путём наследования от существующих, расширяя их
-    // * переопределение методов - реализуем специфику в потомках
-    // * доступ к членам суперкласса - можем вызывать методы родителя
-    // * полиморфизм - можем подставлять потомков везде, где нужен суперкласс
+    // Promise - контейнер для Future. Так и не смог понять, в каких случаях Promise полезен
 
-    // + можно строить логичные иерархии типов
-    // + легко специфицировать поведение потомков через переопределение методов
+    // Future - отложенное значение. Расчёт значения запускается в отдельном потоке
 
-    // - могут получаться жёсткие иерархии
-    // - код сложно использовать вне иерархии
-    // - изменения в суперклассах могут ломать поведение наследников
-
-    abstract class Animal(val name: String) {
-      def sound: String
-
-      def makeSound(): Unit = println(s"$name makes a sound: ${sound}")
+    Future {
+      Thread.sleep(1000)
+      println("Future завершена")
+      42
+    }.onComplete {
+      case Success(value) => println(s"Future успешно вернула $value")
+      case Failure(exception) => println(s"Ошибка в Future ${exception.getMessage}")
     }
 
-    class Dog(name: String) extends Animal(name) {
-      override def sound: String = "Woof"
-    }
+    println("Выполняется сразу после создания Future")
 
-    class Cat(name: String) extends Animal(name) {
-      override def sound: String = "Meow"
-    }
+    Thread.sleep(2000)
 
-    val dog = new Dog("Buddy")
-    dog.makeSound() // Output: Buddy makes a sound: Woof
-
-    val cat = new Cat("Whiskers")
-    cat.makeSound() // Output: Whiskers makes a sound: Meow
-
-    // Композиция:
-    // * включаем одни классы в другие. Мы как из кирпичиков Lego строим новые объекты
-
-    // + простое повторное использование кода
-    // + меньше зависимостей от иерархий классов
-
-    // - много кода для связывания компонентов
-
-    trait SoundMaker {
-      def makeSound(): Unit
-    }
-
-    class DogComposition(val name: String) extends SoundMaker {
-      override def makeSound(): Unit = println(s"$name says: Woof")
-    }
-
-    class CatComposition(val name: String) extends SoundMaker {
-      override def makeSound(): Unit = println(s"$name says: Meow")
-    }
-
-    class Zoo {
-      private var animals: List[SoundMaker] = List()
-
-      def addAnimal(animal: SoundMaker): Unit = {
-        animals = animal :: animals
-      }
-
-      def makeAllSounds(): Unit = {
-        animals.foreach(_.makeSound())
-      }
-    }
-
-    val zoo = new Zoo
-    val dogComposition = new DogComposition("Buddy")
-    val catComposition = new CatComposition("Whiskers")
-
-    zoo.addAnimal(dogComposition)
-    zoo.addAnimal(catComposition)
-    zoo.makeAllSounds()
-    // Output:
-    // Buddy says: Woof
-    // Whiskers says: Meow
+    println("К этому моменту Future завершена и напечатала строку")
   }
 }
