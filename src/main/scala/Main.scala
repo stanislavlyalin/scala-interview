@@ -1,21 +1,28 @@
 object Main {
+
+  // Дан неотсортированный массив целых чисел. Найдите длину самой длинной последовательности
+  // последовательных чисел, которая может быть создана из элементов массива.
+
+  def maxSequenceLength(arr: List[Int]): Int = {
+    def maxSequencies(pairs: List[(Int, Int)], lengths: List[Int]): Int = {
+      if (pairs.length <= 1) Math.max(1, lengths.maxOption.getOrElse(1))
+      else {
+        val l = pairs.takeWhile { case (a, b) => b - a  == 1 }
+        val b = pairs.takeWhile { case (a, b) => b - a  != 1 }
+        maxSequencies(pairs.drop(l.length + b.length), lengths :+ (l.length + 1))
+      }
+    }
+
+    val sortedArr = arr.sorted.distinct
+    val pairs = sortedArr.dropRight(1).zip(sortedArr.tail)
+
+    maxSequencies(pairs, List.empty[Int])
+  }
+
   def main(args: Array[String]): Unit = {
-
-    // Kafka
-
-    // Это брокер сообщений. Состоит из сообщений (пары "ключ-значение") и топиков
-    // Есть производитель сообщений - он отправляет сообщения в топик
-    // Есть потребитель сообщений - он читает сообщения из топика
-    // Сообщения хранятся на сервере - брокере
-    // Брокеры могут объединяться в кластер
-    // На один топик может быть несколько брокеров - это партиции. Так можно увеличивать производительность
-    // Сообщения можно копировать на несколько брокеров - так достигается репликация
-    // Сообщения хранятся на диске, поэтому если потребитель отвалился, он получит сообщения, когда подключится
-    // Для работы с Kafka в Scala используют KafkaClient и KafkaStreams
-    // Первый позволяет создать производителя и отправлять сообщения, а так же потребителя и получать сообщения из топика
-    // Со вторым не работал
-    // Несколько потребителей могут подписаться на один топик
-
-    // RabbitMQ - это просто очередь для обмена между приложениями вроде pipe. Очень быстро, но менее масштабируемо
+    assert(maxSequenceLength(List(100, 4, 200, 1, 3, 2)) == 4)
+    assert(maxSequenceLength(List(0, 3, 7, 2, 5, 8, 4, 6, 0, 1)) == 9)
+    assert(maxSequenceLength(List(10, 5, 12, 3, 55, 2, 1, 11)) == 3)
+    assert(maxSequenceLength(List(1, 9, 3, 10, 2, 20, 4)) == 4)
   }
 }
