@@ -1,34 +1,38 @@
+import scala.collection.mutable
+
 object Main {
 
-  // Дан массив целых чисел и целое число S. Найдите такой подмассив, сумма элементов которого равна S.
-  // Если таких подмассивов несколько, верните любой из них. Если такого подмассива нет, верните пустой массив.
+  // Дана строка, содержащая только символы (, ), {, }, [ и ]. Напишите функцию, которая проверяет,
+  // является ли эта строка валидной. Строка считается валидной, если:
+  //    Открывающие скобки должны быть закрыты скобками того же типа.
+  //    Открывающие скобки должны быть закрыты в правильном порядке.
 
-  private def removeAt(array: List[Int], idx: Int): List[Int] = {
-    val (l, r) = array.splitAt(idx)
-    l ++ r.tail
-  }
+  private def isValid(s: String): Boolean = {
+    val stack = mutable.Stack.empty[Char]
 
-  private def subArrayForSum(array: List[Int], s: Int): List[Int] = {
-    def recF(subArray: List[Int], reminder: List[Int]): List[Int] = {
-      reminder.find(v => subArray.sum + v == s).map(v => subArray :+ v).orElse {
-        reminder
-          .zipWithIndex
-          .map { case (v, idx) =>
-            val newSubArray = subArray :+ v
-            val newReminder = removeAt(reminder, idx)
-            recF(newSubArray, newReminder)
-          }.find(_.sum == s)
-      }.getOrElse(List.empty[Int])
+    s.foreach { ch =>
+        if (List('{', '[', '(').contains(ch)) {
+          stack.push(ch)
+        }
+        else if (List('}', ']', ')').contains(ch)) {
+          if (stack.nonEmpty) {
+            stack.top match {
+              case '{' if ch == '}' => stack.pop()
+              case '[' if ch == ']' => stack.pop()
+              case '(' if ch == ')' => stack.pop()
+              case _ => ()
+            }
+          }
+        }
     }
-
-    recF(List.empty[Int], array)
+    stack.isEmpty
   }
 
   def main(args: Array[String]): Unit = {
-    assert(subArrayForSum(List(1, 2, 3, 4, 5), 9).sum == 9)
-    assert(subArrayForSum(List(1, 2, 3, 7, 5), 12).sum == 12)
-    assert(subArrayForSum(List(1, 2, 3, 4, 5), 15).sum == 15)
-    assert(subArrayForSum(List(1, 2, 3, 4, 5), 20).sum == 0)
-    assert(subArrayForSum(List(-1, -2, 4, 7, 1, -3, 2), 5).sum == 5)
+    assert(isValid("()"))
+    assert(isValid("()[]{}"))
+    assert(!isValid("(]"))
+    assert(!isValid("([)]"))
+    assert(isValid("{[]}"))
   }
 }
