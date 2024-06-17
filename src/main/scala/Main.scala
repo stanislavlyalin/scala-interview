@@ -1,38 +1,27 @@
-import scala.collection.mutable
-
 object Main {
 
-  // Дана строка, содержащая только символы (, ), {, }, [ и ]. Напишите функцию, которая проверяет,
-  // является ли эта строка валидной. Строка считается валидной, если:
-  //    Открывающие скобки должны быть закрыты скобками того же типа.
-  //    Открывающие скобки должны быть закрыты в правильном порядке.
+  // Дан отсортированный односвязный список. Напишите функцию, которая удаляет все дубликаты из списка,
+  // чтобы каждый элемент появился только один раз.
 
-  private def isValid(s: String): Boolean = {
-    val stack = mutable.Stack.empty[Char]
+  case class LinkedList(value: Int, var next: LinkedList = null)
 
-    s.foreach { ch =>
-        if (List('{', '[', '(').contains(ch)) {
-          stack.push(ch)
-        }
-        else if (List('}', ']', ')').contains(ch)) {
-          if (stack.nonEmpty) {
-            stack.top match {
-              case '{' if ch == '}' => stack.pop()
-              case '[' if ch == ']' => stack.pop()
-              case '(' if ch == ')' => stack.pop()
-              case _ => ()
-            }
-          }
-        }
+  private def removeDuplicates(l: LinkedList): LinkedList = {
+    var curr = l
+
+    while (curr.next != null) {
+      if (curr.value == curr.next.value) {
+        curr.next = curr.next.next
+      } else {
+        curr = curr.next
+      }
     }
-    stack.isEmpty
+    l
   }
 
   def main(args: Array[String]): Unit = {
-    assert(isValid("()"))
-    assert(isValid("()[]{}"))
-    assert(!isValid("(]"))
-    assert(!isValid("([)]"))
-    assert(isValid("{[]}"))
+    assert(removeDuplicates(LinkedList(1, LinkedList(1, LinkedList(2)))) == LinkedList(1, LinkedList(2)))
+    assert(removeDuplicates(LinkedList(1, LinkedList(1, LinkedList(2, LinkedList(3, LinkedList(3)))))) == LinkedList(1, LinkedList(2, LinkedList(3))))
+    assert(removeDuplicates(LinkedList(1, LinkedList(1, LinkedList(1)))) == LinkedList(1))
+    assert(removeDuplicates(LinkedList(1, LinkedList(2, LinkedList(3)))) == LinkedList(1, LinkedList(2, LinkedList(3))))
   }
 }
