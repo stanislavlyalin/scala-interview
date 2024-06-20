@@ -1,27 +1,43 @@
 object Main {
 
-  // Дан отсортированный односвязный список. Напишите функцию, которая удаляет все дубликаты из списка,
-  // чтобы каждый элемент появился только один раз.
+  // Есть список из интов. Вывести значения локальных максимумов
+  // Для List(1, 2, 5, 4, 6, 2) ответ List(5, 6)
+  // Для List(1, 2, 2, 4) ответ List() – максимумов нет
+  // Для List(1, 3, 3, 1) ответ List(3) – плато из троек также является локальным максимумом
 
-  case class LinkedList(value: Int, var next: LinkedList = null)
+  private def localMax(l: List[Int]): List[Int] = {
 
-  private def removeDuplicates(l: LinkedList): LinkedList = {
-    var curr = l
+    /*val len = l.length
 
-    while (curr.next != null) {
-      if (curr.value == curr.next.value) {
-        curr.next = curr.next.next
+    var maximums = List.empty[Int]
+    var i = 1
+    while (i < len - 1) {
+      if (l(i) >= l(i - 1) && l(i) > l(i + 1)) {
+        maximums = maximums :+ l(i)
+      }
+      i = i + 1
+    }
+
+    maximums*/
+
+    val maximums = l.tail.foldLeft((l.head, false, List.empty[Int])) { case ((prev, prevIsGreater, maxs), v) =>
+      if (v >= prev) {
+        (v, true, maxs)
       } else {
-        curr = curr.next
+        if (prevIsGreater) {
+          (v, false, maxs :+ prev)
+        } else {
+          (v, prevIsGreater, maxs)
+        }
       }
     }
-    l
+
+    maximums._3
   }
 
   def main(args: Array[String]): Unit = {
-    assert(removeDuplicates(LinkedList(1, LinkedList(1, LinkedList(2)))) == LinkedList(1, LinkedList(2)))
-    assert(removeDuplicates(LinkedList(1, LinkedList(1, LinkedList(2, LinkedList(3, LinkedList(3)))))) == LinkedList(1, LinkedList(2, LinkedList(3))))
-    assert(removeDuplicates(LinkedList(1, LinkedList(1, LinkedList(1)))) == LinkedList(1))
-    assert(removeDuplicates(LinkedList(1, LinkedList(2, LinkedList(3)))) == LinkedList(1, LinkedList(2, LinkedList(3))))
+    assert(localMax(List(1, 2, 5, 4, 6, 2)) == List(5, 6))
+    assert(localMax(List(1, 2, 2, 4)) == List())
+    assert(localMax(List(1, 3, 3, 1)) == List(3))
   }
 }
