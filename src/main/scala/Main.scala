@@ -1,43 +1,31 @@
+import cats.effect.IO
+import cats.effect.unsafe.implicits.global
+import cats.syntax.all._
+
+import scala.concurrent.duration.DurationInt
+
 object Main {
-
-  // Есть список из интов. Вывести значения локальных максимумов
-  // Для List(1, 2, 5, 4, 6, 2) ответ List(5, 6)
-  // Для List(1, 2, 2, 4) ответ List() – максимумов нет
-  // Для List(1, 3, 3, 1) ответ List(3) – плато из троек также является локальным максимумом
-
-  private def localMax(l: List[Int]): List[Int] = {
-
-    /*val len = l.length
-
-    var maximums = List.empty[Int]
-    var i = 1
-    while (i < len - 1) {
-      if (l(i) >= l(i - 1) && l(i) > l(i + 1)) {
-        maximums = maximums :+ l(i)
-      }
-      i = i + 1
-    }
-
-    maximums*/
-
-    val maximums = l.tail.foldLeft((l.head, false, List.empty[Int])) { case ((prev, prevIsGreater, maxs), v) =>
-      if (v >= prev) {
-        (v, true, maxs)
-      } else {
-        if (prevIsGreater) {
-          (v, false, maxs :+ prev)
-        } else {
-          (v, prevIsGreater, maxs)
-        }
-      }
-    }
-
-    maximums._3
-  }
-
   def main(args: Array[String]): Unit = {
-    assert(localMax(List(1, 2, 5, 4, 6, 2)) == List(5, 6))
-    assert(localMax(List(1, 2, 2, 4)) == List())
-    assert(localMax(List(1, 3, 3, 1)) == List(3))
+    // На вход List[IO[String]]
+    // Получить IO[(List[String], List[Throwable]) – результат агрегации выполненных IO и исключений
+
+    val talk = List(
+      IO.sleep(1.second).as("red"),
+      IO.raiseError(new RuntimeException("exception1")),
+      IO.pure("blue"),
+      IO.raiseError(new RuntimeException("exception2")),
+      IO.pure("green"),
+      IO.raiseError(new RuntimeException("exception3"))
+    )
+
+    val l = (for {
+      s         <- talk.traverse(_.attempt)
+      (thr, str) = s.partition(_.isLeft)
+    } yield {
+      (str.collect { case s: Right[Throwable, String] => s.value }, thr.collect { case t: Left[Throwable, String] => t.value })
+    }).unsafeRunSync()
+
+    println(l)
+
   }
 }
