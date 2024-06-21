@@ -4,8 +4,8 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 
 object Main {
   def main(args: Array[String]): Unit = {
-    val boundedThreadPool             = Executors.newFixedThreadPool(4)
-    implicit val ec: ExecutionContext = ExecutionContext.fromExecutor(boundedThreadPool)
+    val unboundedThreadPool           = Executors.newCachedThreadPool()
+    implicit val ec: ExecutionContext = ExecutionContext.fromExecutor(unboundedThreadPool)
 
     // Длительная задача
     def longTask(id: Int): Future[Int] = Future {
@@ -19,13 +19,13 @@ object Main {
     val longTasks = Future.sequence((1 to 4).map(longTask))
 
     // Запускаем короткую задачу
-    val shortSadTask: Future[Unit] = Future {
-      println("Я только хочу напечатать 'Привет, мир', но вынуждена ждать завершения 4-х долгих задач")
+    val shortFunnyTask: Future[Unit] = Future {
+      println("Я только хочу напечатать 'Привет, мир', и мне больше не нужно ждать! :)")
     }
 
     Await.result(longTasks, Duration.Inf)
-    Await.result(shortSadTask, Duration.Inf)
+    Await.result(shortFunnyTask, Duration.Inf)
 
-    boundedThreadPool.shutdown()
+    unboundedThreadPool.shutdown()
   }
 }
