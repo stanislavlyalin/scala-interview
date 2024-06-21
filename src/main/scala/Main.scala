@@ -1,31 +1,45 @@
-import java.util.concurrent.Executors
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, ExecutionContext, Future}
+import java.util.concurrent.{ArrayBlockingQueue, BlockingQueue, Executors}
 
 object Main {
   def main(args: Array[String]): Unit = {
-    val unboundedThreadPool           = Executors.newCachedThreadPool()
-    implicit val ec: ExecutionContext = ExecutionContext.fromExecutor(unboundedThreadPool)
+    val queue: BlockingQueue[Int] = new ArrayBlockingQueue[Int](3)
 
-    // Длительная задача
-    def longTask(id: Int): Future[Int] = Future {
-      println(s"Запуск долгой задачи $id")
-      Thread.sleep(5000) // Имитация длительной работы
-      println(s"Завершение долгой задачи $id")
-      id
+    // Исполнительный сервис для потоков-производителей
+    val producerExecutor = Executors.newFixedThreadPool(2)
+    // Исполнительный сервис для потоков-потребителей
+    val consumerExecutor = Executors.newFixedThreadPool(2)
+
+    // Поток-производитель
+    val producer = new Runnable {
+      override def run(): Unit = {
+        var counter = 0
+        while (true) {
+          // Производим данные и кладём в очередь
+          println(s"Производство: $counter")
+          queue.put(counter) // Это блокирующий вызов, который ждёт, пока в очереди не освободится место
+          counter += 1
+          Thread.sleep(100)  // Имитируем задержку производства
+        }
+      }
     }
 
-    // Запускаем 4 длительные задачи, которые занимают весь пул
-    val longTasks = Future.sequence((1 to 4).map(longTask))
-
-    // Запускаем короткую задачу
-    val shortFunnyTask: Future[Unit] = Future {
-      println("Я только хочу напечатать 'Привет, мир', и мне больше не нужно ждать! :)")
+    // Поток-потребитель
+    var consumer = new Runnable {
+      override def run(): Unit = {
+        while (true) {
+          val item = queue.take() // Это блокирующий вызов, который ждёт, пока в очереди не появятся данные
+          println(s"Получение: $item")
+          Thread.sleep(50) // Имитируем задержку обработки
+        }
+      }
     }
 
-    Await.result(longTasks, Duration.Inf)
-    Await.result(shortFunnyTask, Duration.Inf)
+    // Запуск потоков-производителей
+    producerExecutor.execute(producer)
+    producerExecutor.execute(producer)
 
-    unboundedThreadPool.shutdown()
+    // Запуск потоков-потребителей
+    consumerExecutor.execute(consumer)
+    consumerExecutor.execute(consumer)
   }
 }
