@@ -1,42 +1,32 @@
-import cats.effect.ExitCode
+import cats.effect.IO
+import cats.effect.unsafe.implicits.global
 
-import java.util.concurrent.atomic.AtomicBoolean
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future}
-import scala.util.{Failure, Success, Try}
+import scala.concurrent.duration.DurationInt
 
 object Main {
   def main(args: Array[String]): Unit = {
-    val cancelled: AtomicBoolean = new AtomicBoolean(false)
 
-    // Запускам длительную задачу и периодически проверяем, не завершена ли она
-    val cancelableLongTask = Future {
-      for (_ <- 1 until 10) {
-        if (cancelled.get()) throw new RuntimeException("cancelled")
-        Thread.sleep(1000)
+    // Если вместо IO.interruptible указать IO.blocking, то асинхронная операция не прервётся,
+    // так как выполняется в отдельном, не прерываемом пуле потоков.
+    // Задача, созданная через `IO {}` и `IO.delay {}`, тоже не прервётся, так как это
+    // обычное вычисление в том же потоке, и нет механизма для его прерывания.
+    def longBlockingTask: IO[Unit] = IO.interruptible {
+      (1 to 10).foreach { i =>
+        println(s"Итерация $i началась")
+        Thread.sleep(1000) // Имитация длительной работы
+        println(s"Итерация $i завершилась")
       }
-      42
     }
 
-    // Поток, который через 3 секунды устанавливает флаг отмены длительной задачи
-    val cancelTaskThread = Future {
-      Thread.sleep(3000)
-      cancelled.set(true)
-    }
+    (for {
+      // Запуск долгой задачи в отдельном Fiber
+      fiber <- longBlockingTask.start
 
-    cancelableLongTask.onComplete {
-      case Success(value)               =>
-        println(s"Задача завершилась успешно с значением $value")
-      case Failure(_: RuntimeException) =>
-        println("Задача была прервана")
-      case Failure(_)                   =>
-        println("Ошибка выполнения задачи")
-    }
+      // Отмена задачи через 3 секунды
+      _ <- IO.sleep(3.seconds) *> fiber.cancel
 
-    Try(Await.result(cancelableLongTask, Duration.Inf))
-    Await.result(cancelTaskThread, Duration.Inf)
-
-    ExitCode(0)
+      // Печать сообщения об отмене
+      _ <- IO(println("Задача была отменена"))
+    } yield ()).unsafeRunSync()
   }
 }
