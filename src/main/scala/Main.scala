@@ -1,24 +1,42 @@
-import cats.effect.IO
-import cats.effect.unsafe.implicits.global
-import cats.syntax.all._
+import cats.effect.ExitCode
+
+import java.util.concurrent.atomic.AtomicBoolean
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
+import scala.util.{Failure, Success, Try}
 
 object Main {
   def main(args: Array[String]): Unit = {
-    // Длительная задача
-    def longTask(id: Int): IO[Int] = IO.blocking {
-      println(s"Запуск долгой задачи $id")
-      Thread.sleep(5000) // Имитация длительной работы
-      println(s"Завершение долгой задачи $id")
-      id
+    val cancelled: AtomicBoolean = new AtomicBoolean(false)
+
+    // Запускам длительную задачу и периодически проверяем, не завершена ли она
+    val cancelableLongTask = Future {
+      for (_ <- 1 until 10) {
+        if (cancelled.get()) throw new RuntimeException("cancelled")
+        Thread.sleep(1000)
+      }
+      42
     }
 
-    // Короткая задача
-    def shortFunnyTask: IO[Unit] = IO {
-      println("Я только хочу напечатать 'Привет, мир', и мне больше не нужно ждать! :)")
+    // Поток, который через 3 секунды устанавливает флаг отмены длительной задачи
+    val cancelTaskThread = Future {
+      Thread.sleep(3000)
+      cancelled.set(true)
     }
 
-    (for {
-      _ <- List(longTask(1), longTask(2), longTask(3), longTask(4), shortFunnyTask).parSequence
-    } yield ()).unsafeRunSync()
+    cancelableLongTask.onComplete {
+      case Success(value)               =>
+        println(s"Задача завершилась успешно с значением $value")
+      case Failure(_: RuntimeException) =>
+        println("Задача была прервана")
+      case Failure(_)                   =>
+        println("Ошибка выполнения задачи")
+    }
+
+    Try(Await.result(cancelableLongTask, Duration.Inf))
+    Await.result(cancelTaskThread, Duration.Inf)
+
+    ExitCode(0)
   }
 }
