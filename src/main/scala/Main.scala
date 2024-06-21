@@ -1,45 +1,44 @@
-import java.util.concurrent.{ArrayBlockingQueue, BlockingQueue, Executors}
+import cats.effect.unsafe.implicits.global
+import cats.effect.{IO, Resource}
+import cats.syntax.all._
+
+import java.util.concurrent.{ExecutorService, Executors}
+import scala.concurrent.ExecutionContext
 
 object Main {
   def main(args: Array[String]): Unit = {
-    val queue: BlockingQueue[Int] = new ArrayBlockingQueue[Int](3)
 
-    // Исполнительный сервис для потоков-производителей
-    val producerExecutor = Executors.newFixedThreadPool(2)
-    // Исполнительный сервис для потоков-потребителей
-    val consumerExecutor = Executors.newFixedThreadPool(2)
-
-    // Поток-производитель
-    val producer = new Runnable {
-      override def run(): Unit = {
-        var counter = 0
-        while (true) {
-          // Производим данные и кладём в очередь
-          println(s"Производство: $counter")
-          queue.put(counter) // Это блокирующий вызов, который ждёт, пока в очереди не освободится место
-          counter += 1
-          Thread.sleep(100)  // Имитируем задержку производства
+    // Создаем Resource для фиксированного пула потоков
+    def createThreadPool: Resource[IO, (ExecutionContext, ExecutorService)] = {
+      Resource.make {
+        IO {
+          val executor = Executors.newFixedThreadPool(4)
+          val ec       = ExecutionContext.fromExecutor(executor)
+          (ec, executor)
         }
+      } { case (_, executor) =>
+        IO(executor.shutdown())
       }
     }
 
-    // Поток-потребитель
-    var consumer = new Runnable {
-      override def run(): Unit = {
-        while (true) {
-          val item = queue.take() // Это блокирующий вызов, который ждёт, пока в очереди не появятся данные
-          println(s"Получение: $item")
-          Thread.sleep(50) // Имитируем задержку обработки
-        }
-      }
-    }
+    // Длительная задача
+    def longTask(id: Int)(implicit ec: ExecutionContext): IO[Int] = IO {
+      println(s"Запуск долгой задачи $id")
+      Thread.sleep(5000) // Имитация длительной работы
+      println(s"Завершение долгой задачи $id")
+      id
+    }.evalOn(ec)
 
-    // Запуск потоков-производителей
-    producerExecutor.execute(producer)
-    producerExecutor.execute(producer)
+    // Короткая задача
+    def shortSadTask(implicit ec: ExecutionContext): IO[Unit] = IO {
+      println("Я только хочу напечатать 'Привет, мир', но вынуждена ждать завершения 4-х долгих задач")
+    }.evalOn(ec)
 
-    // Запуск потоков-потребителей
-    consumerExecutor.execute(consumer)
-    consumerExecutor.execute(consumer)
+    createThreadPool.use { case (ec, _) =>
+      implicit val implicitEc: ExecutionContext = ec
+      for {
+        _ <- List(longTask(1), longTask(2), longTask(3), longTask(4), shortSadTask).parSequence
+      } yield ()
+    }.unsafeRunSync()
   }
 }
