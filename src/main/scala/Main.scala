@@ -1,42 +1,31 @@
-import scala.concurrent.ExecutionContext.Implicits.global
+import java.util.concurrent.Executors
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future}
-import scala.util.Random
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 object Main {
   def main(args: Array[String]): Unit = {
-    val arraySize = 1000000
-    val numTasks  = 1000
-    val random    = new Random()
-    val array     = Array.fill(arraySize)(random.nextInt(100))
+    val boundedThreadPool             = Executors.newFixedThreadPool(4)
+    implicit val ec: ExecutionContext = ExecutionContext.fromExecutor(boundedThreadPool)
 
-    // Function to measure time
-    def time[R](block: => R): Long = {
-      val t0 = System.nanoTime()
-      block
-      val t1 = System.nanoTime()
-      t1 - t0
+    // Длительная задача
+    def longTask(id: Int): Future[Int] = Future {
+      println(s"Запуск долгой задачи $id")
+      Thread.sleep(5000) // Имитация длительной работы
+      println(s"Завершение долгой задачи $id")
+      id
     }
 
-    // Sequential sum
-    val seqTime = time {
-      val sum = array.sum
-      println(s"Sequential sum: $sum")
-    }
-    println(s"Sequential time: $seqTime ns")
+    // Запускаем 4 длительные задачи, которые занимают весь пул
+    val longTasks = Future.sequence((1 to 4).map(longTask))
 
-    // Parallel sum
-    val parallelTime = time {
-      val step    = arraySize / numTasks
-      val futures = for (i <- 0 until numTasks) yield Future {
-        val start = i * step
-        val end   = if (i == numTasks - 1) arraySize else (i + 1) * step
-        array.slice(start, end).sum
-      }
-
-      val sum = Await.result(Future.sequence(futures).map(_.sum), Duration.Inf)
-      println(s"Parallel sum: $sum")
+    // Запускаем короткую задачу
+    val shortSadTask: Future[Unit] = Future {
+      println("Я только хочу напечатать 'Привет, мир', но вынуждена ждать завершения 4-х долгих задач")
     }
-    println(s"Parallel time: $parallelTime ns")
+
+    Await.result(longTasks, Duration.Inf)
+    Await.result(shortSadTask, Duration.Inf)
+
+    boundedThreadPool.shutdown()
   }
 }
