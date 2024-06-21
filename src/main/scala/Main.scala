@@ -1,31 +1,42 @@
-import cats.effect.IO
-import cats.effect.unsafe.implicits.global
-import cats.syntax.all._
-
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
+import scala.util.Random
 
 object Main {
   def main(args: Array[String]): Unit = {
-    // На вход List[IO[String]]
-    // Получить IO[(List[String], List[Throwable]) – результат агрегации выполненных IO и исключений
+    val arraySize = 1000000
+    val numTasks  = 1000
+    val random    = new Random()
+    val array     = Array.fill(arraySize)(random.nextInt(100))
 
-    val talk = List(
-      IO.sleep(1.second).as("red"),
-      IO.raiseError(new RuntimeException("exception1")),
-      IO.pure("blue"),
-      IO.raiseError(new RuntimeException("exception2")),
-      IO.pure("green"),
-      IO.raiseError(new RuntimeException("exception3"))
-    )
+    // Function to measure time
+    def time[R](block: => R): Long = {
+      val t0 = System.nanoTime()
+      block
+      val t1 = System.nanoTime()
+      t1 - t0
+    }
 
-    val l = (for {
-      s         <- talk.traverse(_.attempt)
-      (thr, str) = s.partition(_.isLeft)
-    } yield {
-      (str.collect { case s: Right[Throwable, String] => s.value }, thr.collect { case t: Left[Throwable, String] => t.value })
-    }).unsafeRunSync()
+    // Sequential sum
+    val seqTime = time {
+      val sum = array.sum
+      println(s"Sequential sum: $sum")
+    }
+    println(s"Sequential time: $seqTime ns")
 
-    println(l)
+    // Parallel sum
+    val parallelTime = time {
+      val step    = arraySize / numTasks
+      val futures = for (i <- 0 until numTasks) yield Future {
+        val start = i * step
+        val end   = if (i == numTasks - 1) arraySize else (i + 1) * step
+        array.slice(start, end).sum
+      }
 
+      val sum = Await.result(Future.sequence(futures).map(_.sum), Duration.Inf)
+      println(s"Parallel sum: $sum")
+    }
+    println(s"Parallel time: $parallelTime ns")
   }
 }
