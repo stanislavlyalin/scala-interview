@@ -1,32 +1,54 @@
-import cats.effect.IO
-import cats.effect.unsafe.implicits.global
-
-import scala.concurrent.duration.DurationInt
+import scala.util.Random
 
 object Main {
   def main(args: Array[String]): Unit = {
+    val arraySize = 1000000
+    val numTasks  = 1000
+    val random    = new Random()
+    val array     = Array.fill(arraySize)(random.nextInt(100))
 
-    // Если вместо IO.interruptible указать IO.blocking, то асинхронная операция не прервётся,
-    // так как выполняется в отдельном, не прерываемом пуле потоков.
-    // Задача, созданная через `IO {}` и `IO.delay {}`, тоже не прервётся, так как это
-    // обычное вычисление в том же потоке, и нет механизма для его прерывания.
-    def longBlockingTask: IO[Unit] = IO.interruptible {
-      (1 to 10).foreach { i =>
-        println(s"Итерация $i началась")
-        Thread.sleep(1000) // Имитация длительной работы
-        println(s"Итерация $i завершилась")
-      }
+    // Function to measure time
+    def time[R](block: => R): Long = {
+      val t0 = System.nanoTime()
+      block
+      val t1 = System.nanoTime()
+      t1 - t0
     }
 
-    (for {
-      // Запуск долгой задачи в отдельном Fiber
-      fiber <- longBlockingTask.start
+    // Sequential sum
+    val seqTime = time {
+      val sum = array.sum
+      println(s"Sequential sum: $sum")
+    }
+    println(s"Sequential time: $seqTime ns")
 
-      // Отмена задачи через 3 секунды
-      _ <- IO.sleep(3.seconds) *> fiber.cancel
+    // Parallel sum
+    val parallelTime = time {
+      val step    = arraySize / numTasks
+      val threads = new Array[Thread](numTasks)
+      val results = new Array[Int](numTasks)
 
-      // Печать сообщения об отмене
-      _ <- IO(println("Задача была отменена"))
-    } yield ()).unsafeRunSync()
+      for (i <- 0 until numTasks) {
+        val taskIndex = i
+        threads(i) = new Thread(new Runnable {
+          def run(): Unit = {
+            val start = taskIndex * step
+            val end   = if (taskIndex == numTasks - 1) arraySize else (taskIndex + 1) * step
+            results(taskIndex) = array.slice(start, end).sum
+          }
+        })
+      }
+
+      // Start all threads
+      threads.foreach(_.start())
+
+      // Wait for all threads to finish
+      threads.foreach(_.join())
+
+      // Sum up the results
+      val sum = results.sum
+      println(s"Parallel sum: $sum")
+    }
+    println(s"Parallel time: $parallelTime ns")
   }
 }
