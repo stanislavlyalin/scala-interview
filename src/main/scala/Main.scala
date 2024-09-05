@@ -1,54 +1,35 @@
-import scala.util.Random
+import cats.effect.IO
+import cats.effect.unsafe.implicits.global
+
+import scala.concurrent.duration.DurationInt
 
 object Main {
+  // "Корутина" A
+  private def coroutineA: IO[Unit] = for {
+    _ <- IO.println("Coroutine A: Начало")
+    _ <- IO.sleep(1.second) // Приостанавливаем выполнение на 1 секунду
+    _ <- IO.println("Coroutine A: Продолжение после паузы")
+    _ <- IO.sleep(1.second)
+    _ <- IO.println("Coroutine A: Завершение")
+  } yield ()
+
+  // "Корутина" B
+  private def coroutineB: IO[Unit] = for {
+    _ <- IO.println("Coroutine B: Начало")
+    _ <- IO.sleep(500.millis) // Приостанавливаем выполнение на 500 миллисекунд
+    _ <- IO.println("Coroutine B: Продолжение после паузы")
+    _ <- IO.sleep(500.millis)
+    _ <- IO.println("Coroutine B: Завершение")
+  } yield ()
+
   def main(args: Array[String]): Unit = {
-    val arraySize = 1000000
-    val numTasks  = 1000
-    val random    = new Random()
-    val array     = Array.fill(arraySize)(random.nextInt(100))
+    val program = for {
+      fiberA <- coroutineA.start // Запускаем coroutineA асинхронно
+      fiberB <- coroutineB.start // Запускаем coroutineB асинхронно
+      _      <- fiberA.join      // Ждем завершения coroutineA
+      _      <- fiberB.join      // Ждем завершения coroutineB
+    } yield ()
 
-    // Function to measure time
-    def time[R](block: => R): Long = {
-      val t0 = System.nanoTime()
-      block
-      val t1 = System.nanoTime()
-      t1 - t0
-    }
-
-    // Sequential sum
-    val seqTime = time {
-      val sum = array.sum
-      println(s"Sequential sum: $sum")
-    }
-    println(s"Sequential time: $seqTime ns")
-
-    // Parallel sum
-    val parallelTime = time {
-      val step    = arraySize / numTasks
-      val threads = new Array[Thread](numTasks)
-      val results = new Array[Int](numTasks)
-
-      for (i <- 0 until numTasks) {
-        val taskIndex = i
-        threads(i) = new Thread(new Runnable {
-          def run(): Unit = {
-            val start = taskIndex * step
-            val end   = if (taskIndex == numTasks - 1) arraySize else (taskIndex + 1) * step
-            results(taskIndex) = array.slice(start, end).sum
-          }
-        })
-      }
-
-      // Start all threads
-      threads.foreach(_.start())
-
-      // Wait for all threads to finish
-      threads.foreach(_.join())
-
-      // Sum up the results
-      val sum = results.sum
-      println(s"Parallel sum: $sum")
-    }
-    println(s"Parallel time: $parallelTime ns")
+    program.unsafeRunSync()
   }
 }
