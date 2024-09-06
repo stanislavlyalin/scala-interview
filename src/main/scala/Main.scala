@@ -1,23 +1,37 @@
-import cats.effect.IO
-import cats.effect.unsafe.implicits.global
-
-import scala.concurrent.duration.DurationInt
+import java.util.concurrent.{ForkJoinPool, RecursiveTask}
 
 object Main {
-  // Функция для работы с fiber
-  private def task(id: Int): IO[Unit] =
-    IO.println(s"Task $id started") *>
-      IO.sleep(1.second) *>
-      IO.println(s"Task $id finished")
+  // Определяем RecursiveTask для подсчета суммы элементов массива
+  private class SumTask(arr: Array[Int], start: Int, end: Int) extends RecursiveTask[Int] {
+
+    private val THRESHOLD = 1000 // Порог, при котором задача не делится на подзадачи
+
+    override def compute(): Int = {
+      if (end - start <= THRESHOLD) {
+        // Прямая обработка (базовый случай)
+        arr.slice(start, end).sum
+      } else {
+        // Делим задачу на подзадачи (fork)
+        val mid       = (start + end) / 2
+        val leftTask  = new SumTask(arr, start, mid)
+        val rightTask = new SumTask(arr, mid, end)
+
+        leftTask.fork() // Выполняем левую задачу асинхронно
+        val rightResult = rightTask.compute() // Выполняем правую задачу синхронно
+        val leftResult  = leftTask.join()     // Ожидаем завершения левой задачи
+
+        leftResult + rightResult
+      }
+    }
+  }
 
   def main(args: Array[String]): Unit = {
-    val program = for {
-      fiber1 <- task(1).start // Запуск задачи как fiber
-      fiber2 <- task(2).start
-      _      <- fiber1.join   // Ожидание завершения первой fiber
-      _      <- fiber2.join   // Ожидание завершения второй fiber
-    } yield ()
+    val array = Array.fill(1000000)(1)
+    val pool  = new ForkJoinPool()
 
-    program.unsafeRunSync()
+    val task   = new SumTask(array, 0, array.length)
+    val result = pool.invoke(task)
+
+    println(s"Sum: $result")
   }
 }
